@@ -17,6 +17,7 @@
 package com.money.manager.ex.common;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.v4.app.NavUtils;
 import android.support.v7.app.AppCompatActivity;
@@ -24,9 +25,13 @@ import android.support.v7.widget.Toolbar;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.widget.Toast;
 
+import com.money.manager.ex.PasscodeActivity;
 import com.money.manager.ex.R;
 import com.money.manager.ex.core.Core;
+import com.money.manager.ex.core.Passcode;
+import com.money.manager.ex.core.RequestCodes;
 import com.money.manager.ex.core.UIHelper;
 import com.money.manager.ex.log.ErrorRaisedEvent;
 import com.money.manager.ex.settings.AppSettings;
@@ -46,6 +51,9 @@ public abstract class MmxBaseFragmentActivity
     public CompositeSubscription compositeSubscription;
 
     private Toolbar mToolbar;
+    public static boolean isHomePressed = true;
+
+    protected static boolean isAuthenticated = true;
     private boolean mDisplayHomeAsUpEnabled = false;
 
     @Override
@@ -236,5 +244,87 @@ public abstract class MmxBaseFragmentActivity
         } catch (Exception e) {
             Timber.e(e, "setting theme");
         }
+    }
+
+    @Override
+    protected void onResume(){
+        super.onResume();
+        if (isHomePressed) {
+            Passcode passcode = new Passcode(getApplicationContext());
+            if (passcode.hasPasscode()) {
+                Intent intent = new Intent(this, PasscodeActivity.class);
+                // set action and data
+                intent.setAction(PasscodeActivity.INTENT_REQUEST_PASSWORD);
+                intent.putExtra(PasscodeActivity.INTENT_MESSAGE_TEXT, getString(R.string.enter_your_passcode));
+                // start activity
+                startActivityForResult(intent, RequestCodes.PASSCODE);
+                // set in authentication
+            }
+            isHomePressed = false;
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        switch (requestCode) {
+            case RequestCodes.PASSCODE:
+                isAuthenticated = false;
+                if (resultCode == RESULT_OK && data != null) {
+                    Passcode passcode = new Passcode(getApplicationContext());
+                    String passIntent = data.getStringExtra(PasscodeActivity.INTENT_RESULT_PASSCODE);
+                    String passDb = passcode.getPasscode();
+                    if (passIntent != null && passDb != null) {
+                        isAuthenticated = passIntent.equals(passDb);
+                        if (!isAuthenticated) {
+                            Toast.makeText(getApplicationContext(), R.string.passocde_no_macth, Toast.LENGTH_LONG).show();
+                        }
+                    }
+                }
+                if (!isAuthenticated) {
+                    Passcode passcode = new Passcode(getApplicationContext());
+                    if (passcode.hasPasscode()) {
+                        Intent intent = new Intent(this, PasscodeActivity.class);
+                        // set action and data
+                        intent.setAction(PasscodeActivity.INTENT_REQUEST_PASSWORD);
+                        intent.putExtra(PasscodeActivity.INTENT_MESSAGE_TEXT, getString(R.string.enter_your_passcode));
+                        // start activity
+                        startActivityForResult(intent, RequestCodes.PASSCODE);
+                        // set in authentication
+                    }
+                }
+                break;
+        }
+    }
+
+    private boolean startingActivity = false;
+
+    @Override
+    protected void onUserLeaveHint()
+    {
+        if(startingActivity)
+        {
+            // Reset boolean for next time
+            startingActivity = false;
+        }
+        else
+        {
+            isHomePressed = true;
+        }
+    }
+
+    @Override
+    public void startActivity(Intent intent)
+    {
+        startingActivity = true;
+        super.startActivity(intent);
+    }
+
+    @Override
+    public void startActivityForResult(Intent intent, int requestCode)
+    {
+        startingActivity = true;
+        super.startActivityForResult(intent, requestCode);
     }
 }

@@ -241,23 +241,6 @@ public class MainActivity
     @Override
     protected void onStart() {
         super.onStart();
-
-        // check if has pass-code and authenticate
-        if (!isAuthenticated) {
-            Passcode passcode = new Passcode(getApplicationContext());
-            if (passcode.hasPasscode() && !isInAuthentication) {
-                Intent intent = new Intent(this, PasscodeActivity.class);
-                // set action and data
-                intent.setAction(PasscodeActivity.INTENT_REQUEST_PASSWORD);
-                intent.putExtra(PasscodeActivity.INTENT_MESSAGE_TEXT, getString(R.string.enter_your_passcode));
-                // start activity
-                startActivityForResult(intent, RequestCodes.PASSCODE);
-                // set in authentication
-                isInAuthentication = true;
-            }
-        }
-
-        // todo: mark the active database file in the navigation panel.
         // mDrawer
     }
 
@@ -305,26 +288,6 @@ public class MainActivity
 
                 DatabaseMetadata db = DatabaseMetadataFactory.getInstance(selectedPath);
                 changeDatabase(db);
-                break;
-
-            case RequestCodes.PASSCODE:
-                isAuthenticated = false;
-                isInAuthentication = false;
-                if (resultCode == RESULT_OK && data != null) {
-                    Passcode passcode = new Passcode(getApplicationContext());
-                    String passIntent = data.getStringExtra(PasscodeActivity.INTENT_RESULT_PASSCODE);
-                    String passDb = passcode.getPasscode();
-                    if (passIntent != null && passDb != null) {
-                        isAuthenticated = passIntent.equals(passDb);
-                        if (!isAuthenticated) {
-                            Toast.makeText(getApplicationContext(), R.string.passocde_no_macth, Toast.LENGTH_LONG).show();
-                        }
-                    }
-                }
-                // close if not authenticated
-                if (!isAuthenticated) {
-                    this.finish();
-                }
                 break;
         }
     }
